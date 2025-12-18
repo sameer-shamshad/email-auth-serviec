@@ -68,11 +68,7 @@ export const sendEmail = async (req: Request, res: Response): Promise<Response> 
       status: 'sent',
     });
 
-    return res.status(200).json({
-      message: 'Email sent successfully',
-      messageId: info.messageId,
-      emailId: emailRecord._id,
-    });
+    return res.status(200).json({ message: 'Email sent successfully' });
   } catch (error) {
     console.error('Error sending email:', error);
 
@@ -94,11 +90,7 @@ export const sendEmail = async (req: Request, res: Response): Promise<Response> 
       console.error('Error saving email record to database:', dbError);
     }
 
-    return res.status(500).json({
-      message: 'Failed to send email',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      emailId: emailRecord?._id,
-    });
+    return res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 

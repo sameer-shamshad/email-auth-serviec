@@ -1,11 +1,17 @@
 import express, { Application, Request, Response } from 'express';
+import connectMongoDB from './src/config/mongo.config';
 import emailRoutes from './src/routes/email.routes';
 import { PORT } from './src/config/env.config';
-import connectMongoDB from './src/config/mongo.config';
+import cors from 'cors';
 
 const app: Application = express();
 
 // Middleware
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
