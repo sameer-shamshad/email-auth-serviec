@@ -4,4 +4,3 @@
   "ignore": ["src/**/*.spec.ts", "node_modules"],
   "exec": "ts-node server.ts"
 }
-

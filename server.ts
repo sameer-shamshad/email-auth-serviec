@@ -1,6 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import emailRoutes from './src/routes/email.routes';
-import env from './src/config/env.config';
+import { PORT } from './src/config/env.config';
 
 const app: Application = express();
 
@@ -26,7 +26,5 @@ app.get('/', (req: Request, res: Response) => {
     },
   });
 });
-
-const PORT = env.PORT;
 
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
