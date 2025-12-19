@@ -168,3 +168,40 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
+/**
+ * Logout user
+ * POST /api/auth/logout
+ * Body: { refreshToken }
+ */
+export const logout = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { refreshToken } = req.body;
+
+    // Validate required fields
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'The refresh token is required.' });
+    }
+
+    // Find user by refreshToken
+    const user = await User.findOne({ refreshToken });
+
+    if (!user) {
+      // Token doesn't exist or already invalidated - still return success for security
+      return res.status(200).json({ message: 'Logout successful' });
+    }
+
+    // Clear refreshToken from database
+    user.refreshToken = '';
+    await user.save();
+
+    return res.status(200).json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Error logging out user:', error);
+
+    return res.status(500).json({
+      message: 'Failed to logout user',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
