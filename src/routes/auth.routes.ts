@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { register, login, logout } from '../controllers/auth.controller';
 import { verifyAccessToken } from '../middlewares/verifyToken';
+import { register, login, logout, checkSession, refreshAccessToken } from '../controllers/auth.controller';
 
 const router = Router();
 
@@ -15,5 +15,13 @@ router.post('/login', login);
 // POST route to logout user
 // Requires: Authorization header with Bearer token (accessToken)
 router.post('/logout', verifyAccessToken, logout);
+
+// GET route to check user session
+// Requires: Authorization header with Bearer token (accessToken)
+router.get('/session', verifyAccessToken, checkSession);
+
+// POST route to refresh access token
+// Body: { refreshToken }
+router.post('/refresh', refreshAccessToken);
 
 export default router;
