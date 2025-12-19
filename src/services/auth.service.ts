@@ -11,9 +11,11 @@ export const generateAccessToken = async (userId: string): Promise<string> => {
     throw new Error('JWT_ACCESS_SECRET is not configured');
   }
   // @ts-expect-error - expiresIn accepts string values like '15m', '7d' which is valid
-  return jwt.sign({ userId }, JWT_ACCESS_SECRET, {
-    expiresIn: JWT_ACCESS_EXPIRES_IN || '15m',
-  });
+  return jwt.sign(
+    { userId }, 
+    JWT_ACCESS_SECRET, 
+    { expiresIn: JWT_ACCESS_EXPIRES_IN }
+  );
 };
 
 /**
@@ -27,9 +29,11 @@ export const generateRefreshToken = async (userId: string, email: string): Promi
     throw new Error('JWT_REFRESH_SECRET is not configured');
   }
   // @ts-expect-error - expiresIn accepts string values like '15m', '7d' which is valid
-  return jwt.sign({ userId, email }, JWT_REFRESH_SECRET, {
-    expiresIn: JWT_REFRESH_EXPIRES_IN || '7d',
-  });
+  return jwt.sign(
+    { userId, email }, 
+    JWT_REFRESH_SECRET, 
+    { expiresIn: JWT_REFRESH_EXPIRES_IN }
+  );
 };
 
 /**

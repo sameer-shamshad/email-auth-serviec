@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { User } from '../models/user.model';
-import { generateAccessAndRefreshToken } from '../services/auth.service';
+import { generateAccessAndRefreshToken, generateAccessToken } from '../services/auth.service';
+import { JWT_REFRESH_SECRET } from '../config/env.config';
 
 interface RegisterRequest {
   username: string;
@@ -205,3 +207,57 @@ export const logout = async (req: Request, res: Response): Promise<Response> => 
   }
 };
 
+export const checkSession = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const userId = req.userId;
+
+    const user = await User.findById(userId).select('-password -__v');
+
+    if (!user) {
+      return res.status(404).json({  message: 'User not found.' });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error('Check session error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+export const refreshAccessToken = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { refreshToken: token } = req.body;
+
+    // Validate input
+    if (!token)
+      return res.status(400).json({ message: 'The refresh token is required.' });
+
+    // Verify refresh token
+    let decoded;
+    try {
+      
+      decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { userId: string };
+    } catch (error) {
+      return res.status(401).json({ message: 'The refresh token is invalid or expired.' });
+    }
+
+    // Find user by ID
+    const user = await User.findById(decoded?.userId).select('-password -__v -recentlyViewedTools');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Check if the refresh token matches the one stored in database
+    if (user.refreshToken !== token)
+      return res.status(401).json({ message: 'The refresh token is invalid.' });
+
+    // Generate new access token
+    const accessToken = await generateAccessToken(user._id.toString());
+
+    return res.status(200).json({ accessToken, user, refreshToken: user.refreshToken });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
