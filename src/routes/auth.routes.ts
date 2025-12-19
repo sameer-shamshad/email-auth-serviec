@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { register, login, logout } from '../controllers/auth.controller';
+import { verifyAccessToken } from '../middlewares/verifyToken';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.post('/register', register);
 router.post('/login', login);
 
 // POST route to logout user
-// Body: { refreshToken }
-router.post('/logout', logout);
+// Requires: Authorization header with Bearer token (accessToken)
+router.post('/logout', verifyAccessToken, logout);
 
 export default router;

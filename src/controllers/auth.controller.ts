@@ -171,22 +171,22 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 /**
  * Logout user
  * POST /api/auth/logout
- * Body: { refreshToken }
+ * Requires: Authorization header with Bearer token (accessToken)
+ * Middleware: verifyToken (extracts userId from token)
  */
 export const logout = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { refreshToken } = req.body;
+    // userId is set by verifyToken middleware
+    const userId = req.userId;
 
-    // Validate required fields
-    if (!refreshToken) {
-      return res.status(400).json({ message: 'The refresh token is required.' });
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized request.' });
     }
 
-    // Find user by refreshToken
-    const user = await User.findOne({ refreshToken });
+    // Find user by userId
+    const user = await User.findById(userId);
 
-    if (!user) {
-      // Token doesn't exist or already invalidated - still return success for security
+    if (!user) { // User doesn't exist - still return success for security
       return res.status(200).json({ message: 'Logout successful' });
     }
 
