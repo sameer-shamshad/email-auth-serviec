@@ -6,6 +6,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IUser extends Document {
   username: string;
   email: string;
+  password: string;
   profileUrl?: string;
   refreshToken?: string;
   createdAt: Date;
@@ -31,6 +32,13 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       unique: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email address'],
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      trim: true,
+      minlength: [7, 'Password must be at least 7 characters long'],
+      maxlength: [100, 'Password cannot exceed 100 characters'],
     },
     profileUrl: {
       type: String,
