@@ -94,3 +94,59 @@ export const sendEmail = async (req: Request, res: Response): Promise<Response> 
   }
 };
 
+/**
+ * Get paginated list of emails
+ * Query parameters:
+ * - page: Page number (default: 1)
+ * - limit: Items per page (default: 50, max: 100)
+ * - status: Filter by status ('sent' | 'failed')
+ * - email: Filter by sender email
+ */
+export const getEmails = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100 per page
+    const status = req.query.status as string | undefined;
+    const emailFilter = req.query.email as string | undefined;
+
+    // Build filter object
+    const filter: any = {};
+    if (status && (status === 'sent' || status === 'failed')) {
+      filter.status = status;
+    }
+    if (emailFilter) {
+      filter.email = { $regex: emailFilter, $options: 'i' }; // Case-insensitive search
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch emails with pagination (sorted by newest first)
+    const [emails, totalCount] = await Promise.all([
+      Email.find(filter)
+        .sort({ createdAt: -1 }) // Newest first
+        .skip(skip)
+        .limit(limit)
+        .select('-__v') // Exclude version key
+        .lean(), // Return plain JavaScript objects
+      Email.countDocuments(filter),
+    ]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).json({
+      emails,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching emails:', error);
+    return res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+

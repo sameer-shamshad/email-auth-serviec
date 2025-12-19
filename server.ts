@@ -1,14 +1,21 @@
 import express, { Application, Request, Response } from 'express';
 import connectMongoDB from './src/config/mongo.config';
 import emailRoutes from './src/routes/email.routes';
-import { PORT } from './src/config/env.config';
+import authRoutes from './src/routes/auth.routes';
+import { PORT, ALLOWED_ORIGINS } from './src/config/env.config';
 import cors from 'cors';
 
 const app: Application = express();
+const allowedOrigins = ALLOWED_ORIGINS.split(',');
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    callback(new Error("Not allowed by cors"));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -17,6 +24,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/email', emailRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
@@ -30,6 +38,8 @@ app.get('/', (req: Request, res: Response) => {
     endpoints: {
       health: '/health',
       sendEmail: 'POST /api/email/send',
+      getEmails: 'GET /api/email?page=1&limit=50&status=sent&email=example@email.com',
+      register: 'POST /api/auth/register',
     },
   });
 });
