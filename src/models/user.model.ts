@@ -7,6 +7,7 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  role: 'admin' | 'user';
   profileUrl?: string;
   refreshToken?: string;
   createdAt: Date;
@@ -39,6 +40,12 @@ const userSchema = new Schema<IUser>(
       trim: true,
       minlength: [7, 'Password must be at least 7 characters long'],
       maxlength: [100, 'Password cannot exceed 100 characters'],
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+      required: true,
     },
     profileUrl: {
       type: String,
