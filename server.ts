@@ -40,6 +40,7 @@ app.get('/', (req: Request, res: Response) => {
       sendEmail: 'POST /api/email/send',
       getEmails: 'GET /api/email?page=1&limit=50&status=sent&email=example@email.com',
       register: 'POST /api/auth/register',
+      login: 'POST /api/auth/login',
     },
   });
 });
