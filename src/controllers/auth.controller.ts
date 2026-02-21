@@ -168,3 +168,40 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
+/**
+ * Logout user
+ * POST /api/auth/logout
+ * Requires: Authorization header with Bearer token (accessToken)
+ * Middleware: verifyToken (extracts userId from token)
+ */
+export const logout = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    // userId is set by verifyToken middleware
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized request.' });
+    }
+
+    // Find user by userId
+    const user = await User.findById(userId);
+
+    if (!user) { // User doesn't exist - still return success for security
+      return res.status(200).json({ message: 'Logout successful' });
+    }
+
+    // Clear refreshToken from database
+    user.refreshToken = '';
+    await user.save();
+
+    return res.status(200).json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Error logging out user:', error);
+
+    return res.status(500).json({
+      message: 'Failed to logout user',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
