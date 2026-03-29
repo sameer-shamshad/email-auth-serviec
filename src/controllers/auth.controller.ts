@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { User } from '../models/user.model';
-import { generateAccessAndRefreshToken } from '../services/auth.service';
+import { generateAccessAndRefreshToken, generateAccessToken } from '../services/auth.service';
+import { JWT_REFRESH_SECRET } from '../config/env.config';
 
 interface RegisterRequest {
   username: string;
@@ -18,15 +20,15 @@ interface LoginRequest {
 /**
  * Register a new user
  * POST /api/auth/register
- * Body: { username (name), email, profileUrl? }
+ * Body: { username (name), email, password, profileUrl? }
  */
 export const register = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { username, email, password, profileUrl = "" }: RegisterRequest = req.body;
 
     // Validate required fields
-    if (!username || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
     // Validate email format
@@ -45,11 +47,6 @@ export const register = async (req: Request, res: Response): Promise<Response> =
 
     if (existingUser) {
       return res.status(409).json({ message: 'Email already registered' });
-    }
-
-    // Validate password
-    if (!password) {
-      return res.status(400).json({ message: 'Password is required' });
     }
 
     // Validate password length
@@ -82,6 +79,7 @@ export const register = async (req: Request, res: Response): Promise<Response> =
         id: user._id,
         username: user.username,
         email: user.email,
+        role: user.role,
         profileUrl: user.profileUrl,
       },
     });
@@ -96,8 +94,8 @@ export const register = async (req: Request, res: Response): Promise<Response> =
     }
 
     return res.status(500).json({
-      message: 'Failed to register user' + (error instanceof Error ? 
-        error.message : 'Unknown error'),
+      message: 'Failed to register user',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -155,6 +153,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         id: user._id,
         username: user.username,
         email: user.email,
+        role: user.role,
         profileUrl: user.profileUrl,
       },
     });
@@ -162,8 +161,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     console.error('Error logging in user:', error);
 
     return res.status(500).json({
-      message: 'Failed to login user' + (error instanceof Error ? 
-        error.message : 'Unknown error'),
+      message: 'Failed to login user',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };
@@ -172,7 +171,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
  * Logout user
  * POST /api/auth/logout
  * Requires: Authorization header with Bearer token (accessToken)
- * Middleware: verifyToken (extracts userId from token)
+ * Middleware: verifyAccessToken (extracts userId from token)
  */
 export const logout = async (req: Request, res: Response): Promise<Response> => {
   try {
@@ -205,3 +204,87 @@ export const logout = async (req: Request, res: Response): Promise<Response> => 
   }
 };
 
+/**
+ * Check user session
+ * GET /api/auth/session
+ * Requires: Authorization header with Bearer token (accessToken)
+ * Middleware: verifyAccessToken (extracts userId from token)
+ */
+export const checkSession = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized request.' });
+    }
+
+    const user = await User.findById(userId).select('-password -__v');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error('Check session error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Refresh access token
+ * POST /api/auth/refresh
+ * Body: { refreshToken }
+ */
+export const refreshAccessToken = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { refreshToken: token } = req.body;
+
+    // Validate input
+    if (!token)
+      return res.status(400).json({ message: 'The refresh token is required.' });
+
+    // Validate JWT_REFRESH_SECRET is configured
+    if (!JWT_REFRESH_SECRET) {
+      return res.status(500).json({ message: 'JWT refresh secret not configured.' });
+    }
+
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { userId: string; email?: string };
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'The refresh token has expired.' });
+      } else if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({ message: 'The refresh token is invalid.' });
+      }
+
+      return res.status(401).json({ message: 'The refresh token is invalid or expired.' });
+    }
+
+    if (!decoded?.userId) {
+      return res.status(401).json({ message: 'Invalid token: userId not found.' });
+    }
+
+    // Find user by ID
+    const user = await User.findById(decoded.userId).select('-password -__v');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Check if the refresh token matches the one stored in database
+    if (user.refreshToken !== token) {
+      return res.status(401).json({ message: 'The refresh token is invalid.' });
+    }
+
+    // Generate new access token
+    const accessToken = await generateAccessToken(user._id.toString());
+
+    return res.status(200).json({ accessToken, user, refreshToken: user.refreshToken });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

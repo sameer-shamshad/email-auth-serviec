@@ -42,6 +42,8 @@ app.get('/', (req: Request, res: Response) => {
       register: 'POST /api/auth/register',
       login: 'POST /api/auth/login',
       logout: 'POST /api/auth/logout (requires Authorization: Bearer token)',
+      checkSession: 'GET /api/auth/session (requires Authorization: Bearer token)',
+      refreshToken: 'POST /api/auth/refresh',
     },
   });
 });
